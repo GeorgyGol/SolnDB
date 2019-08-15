@@ -1,0 +1,4 @@
+Name;Code;Freq;Start;Dataset;LastUpdateDate;LastUpdateCount;MULT
+Amplitude adjusted (CLI);LOLITOAA;M;2015;MEI_CLI;;;
+OECD Standardised BCI, Amplitude adjusted (Long term average=100), sa;BSCICP03;M;2015;MEI_CLI;;;
+OECD Standardised CCI, Amplitude adjusted (Long term average=100), sa;CSCICP03;M;2015;MEI_CLI;;;

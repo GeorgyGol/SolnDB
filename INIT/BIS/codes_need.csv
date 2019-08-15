@@ -1,0 +1,12 @@
+Code;Name;Freq;Start;Dataset;LastUpdateDate;LastUpdateCount;MULT
+INDEX_2010_100_N;Property prices: selected series, Index, 2010 = 100, Nominal;Q;1970;https://www.bis.org/statistics/full_bis_selected_pp_csv.zip;0;0;0
+INDEX_2010_100_R;Property prices: selected series, Index, 2010 = 100, Real;Q;1970;https://www.bis.org/statistics/full_bis_selected_pp_csv.zip;0;0;0
+H_A_M_A_770;Credit to the non-financial sector, Borrowing sector: Households & NPISHs, Lending sector: All sectors, Valuation: Market value, Unit type: Percentage of GDP, Type of adjustment: Adjusted for breaks;Q;1970;https://www.bis.org/statistics/full_bis_total_credit_csv.zip;0;0;0
+N_A_M_A_770;Credit to the non-financial sector, Borrowing sector: Non-financial corporations, Lending sector: All sectors, Valuation: Market value, Unit type: Percentage of GDP, Type of adjustment: Adjusted for breaks;Q;1970;https://www.bis.org/statistics/full_bis_total_credit_csv.zip;0;0;0
+H_A_M_A_XDC;Credit to the non-financial sector, Borrowing sector: Households & NPISHs, Lending sector: All sectors, Valuation: Market value, Unit type: Domestic currency (incl. conversion to current currency made using a fix parity), Type of adjustment: Adjusted for breaks;Q;1970;https://www.bis.org/statistics/full_bis_total_credit_csv.zip;0;0;0
+N_A_M_A_XDC;Credit to the non-financial sector, Borrowing sector: Non-financial corporations, Lending sector: All sectors, Valuation: Market value, Unit type: Domestic currency (incl. conversion to current currency made using a fix parity), Type of adjustment: Adjusted for breaks;Q;1970;https://www.bis.org/statistics/full_bis_total_credit_csv.zip;0;0;0
+EER_REAL_2010_100;BIS effective exchange rate;Q;1970;https://www.bis.org/statistics/eer/broad.xlsx;0;0;0
+CBRPOL;Central bank policy rates;Q;1946;https://www.bis.org/statistics/full_webstats_cbpol_d_dataflow_csv_row.zip;0;0;0
+Q_USD_EXCHANGE_A;US dollar exchange rates;Q;1970;https://www.bis.org/statistics/full_webstats_xru_current_dataflow_csv.zip;0;0;0
+Q_P_B_M_XDC_A;Credit to Private non-financial sector from Banks, total at Market value - Domestic currency - Adjusted for breaks;Q;1940;https://www.bis.org/statistics/totcredit/totcredit.xlsx;0;0;0
+Q_P_B_M_770_A;Credit to Private non-financial sector from Banks, total at Market value - Percentage of GDP - Adjusted for breaks;Q;1940;https://www.bis.org/statistics/totcredit/totcredit.xlsx;0;0;0
