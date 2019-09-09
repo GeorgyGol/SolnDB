@@ -13,6 +13,7 @@ import requests
 work_db_OECD = 'OECD.sqlite3'
 work_db_BIS = 'BIS.sqlite3'
 work_db_IMF  = 'IMF1.sqlite3'
+work_db_WB  = 'WB.sqlite3'
 
 strINDI_db_name='INDICATORS'
 strCOUNTRY_db_name='COUNTRIES'
@@ -220,8 +221,12 @@ def create_views(db_name=''):
         strUnion = "SELECT id, country, value, time, time_dop, '{0}' as 'INDI' from {0}"
 
         tbls = pd.read_sql(strQueryINDI_tables, con)
-        strSelect=' UNION '.join([strUnion.format(nm) for nm in tbls['name'].values])
-        create_q(strSelect, nameQ)
+
+        if tbls.shape[0]==1:
+            create_q(strUnion.format(tbls['name'].values[0]), nameQ)
+        else:
+            strSelect=' UNION '.join([strUnion.format(nm) for nm in tbls['name'].values])
+            create_q(strSelect, nameQ)
         print('Create FULL A VIEW done')
 
     con=sqlite3.connect(db_name)
@@ -246,10 +251,13 @@ def make_country_translate(conIMF=None, conBIS=None, conOECD=None):
                                                                                           'id_y': 'idOECD'}).drop_duplicates()
 
 def make_full_panel_dtf(strIMF_DB_path=work_db_IMF,
-                       strBIS_DB_path=work_db_BIS, strOECD_DB_path=work_db_OECD):
+                       strBIS_DB_path=work_db_BIS,
+                        strOECD_DB_path=work_db_OECD,
+                        strWB_DB_path=work_db_WB):
     conIMF = sqlite3.connect(strIMF_DB_path)
     conBIS = sqlite3.connect(strBIS_DB_path)
     conOECD = sqlite3.connect(strOECD_DB_path)
+    conWB = sqlite3.connect(strWB_DB_path)
 
     country_translate = make_country_translate(conIMF=conIMF, conBIS=conBIS, conOECD=conOECD)
 
@@ -269,7 +277,10 @@ def make_full_panel_dtf(strIMF_DB_path=work_db_IMF,
     pdfOECD['country'] = pdfOECD['country'].map(lambda x: country_translate[x])
     print('MAKE PANEL DTF: Reading OECD full database for {} records'.format(pdfOECD.shape[0]))
 
-    pdfRes = pd.concat([pdfIMF, pdfBIS, pdfOECD])  #
+    pdfWB = pd.read_sql(strSelectAll, con=conWB)
+    print('MAKE PANEL DTF: Reading WORLD BANK full database for {} records'.format(pdfWB.shape[0]))
+
+    pdfRes = pd.concat([pdfIMF, pdfBIS, pdfOECD, pdfWB])  #
 
     pdfRes = pdfRes[['country', 'time', 'time_dop', 'INDI', 'value']].set_index(['country', 'time', 'time_dop', 'INDI'])
 

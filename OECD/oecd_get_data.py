@@ -59,10 +59,12 @@ def update_db(db_name=_db_indicators, start=_start_year, write_db=True,
 
     for code, v in pdfIndi.iterrows():
         print('UPDATE OECD: read {} from OECD'.format(code), end=' ... ')
+
         if get_countries:
-            pdf, p_cntr=pds.read_oecd(countryCode=cntry, indiID=code, startDate=start, endDate=end, get_countries=get_countries)
+            pdf, p_cntr=pds.read_oecd(countryCode=cntry, indiID=code, startDate=start, strDataSetID=v['Dataset'],
+                                      endDate=end, get_countries=get_countries)
         else:
-            pdf = pds.read_oecd(countryCode=cntry, indiID=code, startDate=start, endDate=end,
+            pdf = pds.read_oecd(countryCode=cntry, indiID=code, startDate=start, endDate=end, strDataSetID=v['Dataset'],
                                         get_countries=get_countries)
         print('ok for {}'.format(pdf.shape[0]), end=' ... ')
 

@@ -41,7 +41,7 @@ if not sys.warnoptions:
 
 strMainBIS = r'https://www.bis.org/statistics/full_data_sets.htm'
 
-bis_indis = ['PPRICES', 'CREDIT', 'BROAD_REAL', 'CBRPOL',  'CREDIT_NON_FIN', 'USD_ESCH']
+bis_indis = ['PPRICES', 'CREDIT', 'BROAD_REAL', 'CBRPOL',  'CREDIT_NON_FIN', 'USD_ESCH', 'DEBT_SERV_NF']
 
 db_indicators=cmm.work_db_BIS
 
@@ -130,7 +130,7 @@ def _update_db(db_name=db_indicators, start=1950, write_db=True, keys=bis_indis,
 
 if __name__ == "__main__":
     #print(get_countryes())
-    #create_db()
-    update_db(write_db=True)
-    # cmm.create_views(db_name=db_indicators)
+    create_db()
+    #update_db(write_db=True)
+    cmm.create_views(db_name=db_indicators)
     print('all done')

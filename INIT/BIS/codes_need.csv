@@ -10,3 +10,6 @@ CBRPOL;Central bank policy rates;Q;1946;https://www.bis.org/statistics/full_webs
 Q_USD_EXCHANGE_A;US dollar exchange rates;Q;1970;https://www.bis.org/statistics/full_webstats_xru_current_dataflow_csv.zip;0;0;0
 Q_P_B_M_XDC_A;Credit to Private non-financial sector from Banks, total at Market value - Domestic currency - Adjusted for breaks;Q;1940;https://www.bis.org/statistics/totcredit/totcredit.xlsx;0;0;0
 Q_P_B_M_770_A;Credit to Private non-financial sector from Banks, total at Market value - Percentage of GDP - Adjusted for breaks;Q;1940;https://www.bis.org/statistics/totcredit/totcredit.xlsx;0;0;0
+DEBT_SERV_RATIO_H;Debt service ratios for the private non-financial sector;Q;1999;https://www.bis.org/statistics/full_bis_dsr_csv.zip;0;0;0
+DEBT_SERV_RATIO_N;Debt service ratios for the private non-financial sector;Q;1999;https://www.bis.org/statistics/full_bis_dsr_csv.zip;0;0;0
+DEBT_SERV_RATIO_P;Debt service ratios for the private non-financial sector;Q;1999;https://www.bis.org/statistics/full_bis_dsr_csv.zip;0;0;0

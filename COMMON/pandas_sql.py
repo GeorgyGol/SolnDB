@@ -5,6 +5,7 @@ import re
 import os
 import requests
 import ssl
+from pandas_datareader import wb as pddr
 
 import COMMON.readers as cmm
 
@@ -330,11 +331,49 @@ class bis_usd_exchange(_bis_elem):
         self.pdf_value=pdfW[self.result_cols_values]
 
 
+class bis_debt_serv_nf(_bis_elem):
+    strUrl = r'https://www.bis.org/statistics/full_bis_dsr_csv.zip'
+
+    def make_code(self, x):
+        return 'DEBT_SERV_RATIO_'+ x
+
+    def get_coutries(self, pdf):
+        pdfC=pdf[['BORROWERS_CTY', 'Borrowers\' country']].rename(columns={'BORROWERS_CTY':'id', 'Borrowers\' country':'Country'}).drop_duplicates()
+        return pdfC.set_index('id')
+
+    def get_indi(self, pdf):
+        pdfI=pdf.rename(columns={'DSR_BORROWERS':'Code', 'Borrowers':'Name'})
+        pdfI['Name']=pdfI['Name'].map(lambda x : 'Debt service ratios for the private non-financial sector, borrowers - ' + x)
+        pdfI['Code']=pdfI['Code'].map(self.make_code)
+        pdfI['Dataset']=self.URL
+        pdfI['LastUpdateDate'] = 0
+        pdfI['LastUpdateCount'] = 0
+        pdfI['Start'] = 1999
+        pdfI['Freq'] = 'Q'
+        pdfI['MULT'] = 0
+        return pdfI.drop_duplicates()[self.result_cols_indi].set_index('Code')
+
+    def read(self, indiList=[], countryList=[]):
+        pdf = pd.read_csv(self.URL, compression='zip')
+        self.pdf_source = pdf
+        pdfW=pdf.loc[pdf['FREQ']=='Q']
+        self.pdf_countries = self.get_coutries(pdfW)
+
+        w_cols=[c for c in pdfW.columns.tolist() if re.search(r'\d{4}-Q\d', c) or (c in {'BORROWERS_CTY', 'DSR_BORROWERS'})]
+        pdfW=pdfW[w_cols].rename(columns={'BORROWERS_CTY':'country', 'DSR_BORROWERS':'indi'})
+        pdfW['indi']=pdfW['indi'].map(self.make_code)
+
+        self.pdf_indi = self.get_indi(pdf[['DSR_BORROWERS', 'Borrowers']].drop_duplicates())
+
+        pdfW=pdfW.set_index(['country', 'indi']).stack().reset_index().rename(columns={'level_2':'time', 0:'value'})
+
+        self.pdf_value=pdfW[self.result_cols_values]
+
 
 
 def read_bis(indiTYPE='PPRICES', debug_info=False, get_countries=False):
     bis_indis={'PPRICES':bis_prices(), 'CREDIT':bis_credit(), 'BROAD_REAL':bis_broad_real(), 'CBRPOL':bis_cbr_pol(),
-               'CREDIT_NON_FIN':bis_credit_non_fin(), 'USD_ESCH':bis_usd_exchange()}
+               'CREDIT_NON_FIN':bis_credit_non_fin(), 'USD_ESCH':bis_usd_exchange(), 'DEBT_SERV_NF':bis_debt_serv_nf()}
 
     ssl_cntxt=ssl._create_default_https_context
     ssl._create_default_https_context = ssl._create_unverified_context
@@ -667,6 +706,48 @@ def _read_indy():
 
     print('ok')
 
+def read_worldbank(symbol='DT.DOD.DECT.CD.GG.AR.US', countries='all', start=1998,
+                   end=2019, freq='Q', debug_info=False, get_countries=False):
+    pdwb = pddr.WorldBankReader(symbols=symbol, countries=countries, start=start, end=end, freq=freq)
+
+    ret=DataFrameDATA(pdwb.read().reset_index()).rename(columns={symbol:'value', 'year':'time'})
+    ret['indi']=symbol
+
+    db_cntr=pdwb.get_countries()[['iso2c', 'name']].rename(columns={'iso2c':'id', 'name':'Country'}).set_index('id')
+
+    #db_cntr.to_csv('WB_countries.csv', sep=';')
+
+    ret['country'] = ret['country'].map(db_cntr.reset_index().set_index('Country')['id'])
+    ret['time_dop'] = ret['time'].str.extract('Q(\d+)', expand=False)
+    ret['time'] = ret['time'].str.extract('^(\d+)Q', expand=False)
+    ret['id']=ret.apply(lambda x: cmm.get_hash([x['country'].strip(), int(x['time']), int(x['time_dop'])]), axis=1)
+    ret=ret.set_index('id')
+
+    db_indi=pdwb.get_indicators()
+
+    #db_indi.to_csv('wb_indi.csv', sep=';')
+
+    db_indi=db_indi.loc[db_indi['id']==symbol].rename(columns={'id':'Code', 'name':'Name', 'source':'Dataset'})
+    db_indi['Freq']='Q'
+    db_indi['Start']=ret['time'].min()
+    db_indi['LastUpdateDate']=dt.datetime.now()
+    db_indi['LastUpdateCount']=ret.shape[0]
+    db_indi['MULT']=0
+
+    db_indi=db_indi[['Code','Dataset', 'Freq', 'LastUpdateCount', 'LastUpdateDate', 'MULT', 'Name', 'Start']]
+
+    if get_countries:
+        if debug_info:
+            return ret, db_cntr, db_indi, pdwb
+        else:
+            return ret, db_cntr, db_indi
+    else:
+        if debug_info:
+            return ret, pdwb
+        else:
+            return ret
+
+
 if __name__ == "__main__":
 
     #pd, strQ, strJ=from_imf(frequency='Q', countryCode='RU', indiID='NSDGDP_XDC', debug_info=True)
@@ -676,17 +757,21 @@ if __name__ == "__main__":
     #print(pd)
     #_read_indy()
 
-    pr=bis_credit()
-    pr.read()
-    print(pr.values)
-    print(pr.countries)
-    print(pr.indi)
+    # pr=bis_debt_serv_nf()
+    # #pr =bis_cbr_pol()
+    # pr.read()
+    # print(pr.values)
+    # print(pr.countries)
+    # print(pr.indi)
     #print(read_bis(indiTYPE='CBRPOL'))
-    #pdfRet, strQ, strJ, pdCountry=read_oecd(countryCode=['BEL','AUS'], indiID='CSCICP03',  debug_info=True, get_countries=False)
 
-    #print(pdfRet.loc[pdfRet['country']=='BEL'])
-    #print(strQ)
-    #cmm.print_json(strJ)
+    pdfRet, strQ, strJ, pdCountry=read_oecd(countryCode=['BEL','AUS'], indiID='IRLT',  strDataSetID='MEI_FIN',
+                                            debug_info=True, get_countries=False)
+
+    print(pdfRet.loc[pdfRet['country']=='BEL'])
+    print(strQ)
+    cmm.print_json(strJ)
+
     #print(read_imf(strDataSetID='IFS', countryCode=['RU', 'US', 'ZA'], indiID='ENEER_IX'))
     #ppp=read_bis(indiTYPE='CBRPOL')
     #ppp = read_bis(indiTYPE='BROAD_REAL')
@@ -697,6 +782,11 @@ if __name__ == "__main__":
     #print(dtPP.head(10))
     #print(cntrPP.head(10))
     #print(indiPP.head(10))
+
+    # dt, cntr, indi=read_worldbank(get_countries=True)
+    # print(dt)
+    # print('+'.join(cntr.index.tolist()))
+
     print('all done')
 
 
