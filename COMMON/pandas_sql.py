@@ -719,7 +719,10 @@ def read_worldbank(symbol='DT.DOD.DECT.CD.GG.AR.US', countries='all', start=1998
 
     ret['country'] = ret['country'].map(db_cntr.reset_index().set_index('Country')['id'])
     ret['time_dop'] = ret['time'].str.extract('Q(\d+)', expand=False)
+    ret['time_dop']=ret['time_dop'].astype(int)
     ret['time'] = ret['time'].str.extract('^(\d+)Q', expand=False)
+    ret['time'] = ret['time'].astype(int)
+
     ret['id']=ret.apply(lambda x: cmm.get_hash([x['country'].strip(), int(x['time']), int(x['time_dop'])]), axis=1)
     ret=ret.set_index('id')
 
@@ -765,12 +768,12 @@ if __name__ == "__main__":
     # print(pr.indi)
     #print(read_bis(indiTYPE='CBRPOL'))
 
-    pdfRet, strQ, strJ, pdCountry=read_oecd(countryCode=['BEL','AUS'], indiID='IRLT',  strDataSetID='MEI_FIN',
-                                            debug_info=True, get_countries=False)
-
-    print(pdfRet.loc[pdfRet['country']=='BEL'])
-    print(strQ)
-    cmm.print_json(strJ)
+    # pdfRet, strQ, strJ, pdCountry=read_oecd(countryCode=['BEL','AUS'], indiID='IRLT',  strDataSetID='MEI_FIN',
+    #                                         debug_info=True, get_countries=False)
+    #
+    # print(pdfRet.loc[pdfRet['country']=='BEL'])
+    # print(strQ)
+    # cmm.print_json(strJ)
 
     #print(read_imf(strDataSetID='IFS', countryCode=['RU', 'US', 'ZA'], indiID='ENEER_IX'))
     #ppp=read_bis(indiTYPE='CBRPOL')

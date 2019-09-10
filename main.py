@@ -23,9 +23,9 @@ if __name__ == "__main__":
 
     # imf.update_db(db_name=db_imf_path, start=2017)
 
-    # wb.create_db(name=db_wb_path,
-    #               indi_file=os.path.join('INIT', 'WB', 'codes_need.csv'),
-    #               country_file=os.path.join('INIT', 'WB', 'work_countries.txt'))
+    wb.create_db(name=db_wb_path,
+                  indi_file=os.path.join('INIT', 'WB', 'codes_need.csv'),
+                  country_file=os.path.join('INIT', 'WB', 'work_countries.txt'))
 
     # wb.update_db(db_name=db_wb_path, start=2017)
 
@@ -41,10 +41,10 @@ if __name__ == "__main__":
 
     #oecd.update_db(db_name=db_oecd_path, start=2017)
 
-    fpdtf=cmm.make_full_panel_dtf(strIMF_DB_path=db_imf_path, strBIS_DB_path=db_bis_path,
-                                  strOECD_DB_path=db_oecd_path, strWB_DB_path=db_wb_path)
-
-    fpdtf.to_csv(str_panel_file, sep=';')
+    # fpdtf=cmm.make_full_panel_dtf(strIMF_DB_path=db_imf_path, strBIS_DB_path=db_bis_path,
+    #                               strOECD_DB_path=db_oecd_path, strWB_DB_path=db_wb_path)
+    #
+    # fpdtf.to_csv(str_panel_file, sep=';')
 
     #con=sqlite3.connect(db_imf_path)
     #pdf=pd.read_sql('SELECT * FROM INDICATORS_FULL', con=con)

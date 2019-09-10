@@ -232,12 +232,16 @@ def create_views(db_name=''):
     con=sqlite3.connect(db_name)
     create_full_view()
 
-def make_country_translate(conIMF=None, conBIS=None, conOECD=None):
+def make_country_translate(conIMF=None, conBIS=None, conOECD=None, conWB=None):
 
     pdCI = pd.read_sql('select * from {}'.format(strCOUNTRY_db_name), con=conIMF, index_col='id')
     pdCB = pd.read_sql('select * from {}'.format(strCOUNTRY_db_name), con=conBIS, index_col='id')
     pdCO = pd.read_sql('select * from {}'.format(strCOUNTRY_db_name), con=conOECD, index_col='id')
+    pdWB = pd.read_sql('select * from {}'.format(strCOUNTRY_db_name), con=conWB, index_col='id')
+
     pdfALLC = pdCI.merge(pdCB, how='outer', left_index=True, right_index=True)
+    pdfALLC = pdfALLC.merge(pdWB, how='outer', left_index=True, right_index=True)
+
     pdfALLC['Country'] = pdfALLC.apply(lambda x: list(filter(None, x))[0], axis=1)
     pdfALLC = pdfALLC[['Country']]
     pdCO['Cntr'] = pdCO.replace(to_replace={'China (People\'s Republic of)': 'China',
@@ -289,7 +293,8 @@ def make_full_panel_dtf(strIMF_DB_path=work_db_IMF,
 
 def get_needed_data(databases_path=dict(), indicators=(), countries=()):
     def get_countries_list(dctDBNames,  list_names):
-        cntr_l = make_country_translate(conIMF=dctDBNames['IMF'], conBIS=dctDBNames['BIS'], conOECD=dctDBNames['OECD'])
+        cntr_l = make_country_translate(conIMF=dctDBNames['IMF'], conWB=dctDBNames['WB'],
+                                        conBIS=dctDBNames['BIS'], conOECD=dctDBNames['OECD'])
 
 
         strFF = 'CountryIMF' if any(len(l)>2 for l in list_names) else 'idIMF'
