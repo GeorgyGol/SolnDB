@@ -1,7 +1,7 @@
 Name;Code;Freq;Start;Dataset;LastUpdateDate;LastUpdateCount;MULT
-Amplitude adjusted (CLI);LOLITOAA;M;1950;MEI_CLI;;;
-OECD Standardised BCI, Amplitude adjusted (Long term average=100), sa;BSCICP03;M;1950;MEI_CLI;;;
-OECD Standardised CCI, Amplitude adjusted (Long term average=100), sa;CSCICP03;M;1950;MEI_CLI;;;
-Short-term interest rates, percent per annum;IRLT;M;1950;MEI_FIN;;;
-Long-term interest rates, percent per annum;IR3TIB;M;1950;MEI_FIN;;;
-Immediate interest rates, Call Money, Interbank rate, percent per annum;IRSTCI;M;1950;MEI_FIN;;;
+Amplitude adjusted (CLI);LOLITOAA;Q;1950;MEI_CLI;;;
+OECD Standardised BCI, Amplitude adjusted (Long term average=100), sa;BSCICP03;Q;1950;MEI_CLI;;;
+OECD Standardised CCI, Amplitude adjusted (Long term average=100), sa;CSCICP03;Q;1950;MEI_CLI;;;
+Short-term interest rates, percent per annum;IRLT;Q;1950;MEI_FIN;;;
+Long-term interest rates, percent per annum;IR3TIB;Q;1950;MEI_FIN;;;
+Immediate interest rates, Call Money, Interbank rate, percent per annum;IRSTCI;Q;1950;MEI_FIN;;;

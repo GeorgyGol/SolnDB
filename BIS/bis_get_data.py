@@ -49,9 +49,17 @@ def create_db(name=db_indicators, indi_file=os.path.join('Source', 'codes_need.c
               country_file=os.path.join('Source', 'work_countries.txt')):
 
     pdfCSV = cmm.read_indicators_from_csv(indi_file)
-    country_list = cmm.read_countries(file_name=country_file)
+    pdfQ=pdfCSV[pdfCSV['Freq']=='Q']
+    pdfM = pdfCSV[pdfCSV['Freq'] == 'M']
 
-    return _update_db(db_name=name, pdfCSV_Indi=pdfCSV, pdfCntry=country_list, start=0)
+    nameM = cmm.db_name2annu(name, suff='_M')
+
+    country_list = cmm.read_countries(file_name=country_file)
+    dataM=_update_db(db_name=nameM, pdfCSV_Indi=pdfM, pdfCntry=country_list, start=0,
+                     strSuff='MONTHLY', freq='M')
+    dataQ=_update_db(db_name=name, pdfCSV_Indi=pdfQ, pdfCntry=country_list, start=0)
+    #print(dataM)
+    return dataQ, dataM
 
 
 def update_db(db_name=db_indicators, start=2015, write_db=True, keys=bis_indis,
@@ -60,23 +68,27 @@ def update_db(db_name=db_indicators, start=2015, write_db=True, keys=bis_indis,
     pdfDB_indi=pd.read_sql('SELECT * FROM {0}'.format(cmm.strINDI_db_name), con=coni, index_col='Code')
     pdfDB_cntry=pd.read_sql('SELECT * FROM {0}'.format(cmm.strCOUNTRY_db_name), con=coni, index_col='id')
 
+
     return _update_db(db_name=db_name, pdfCSV_Indi=pdfDB_indi, pdfCntry=pdfDB_cntry,
-                      start=start, end=end, write_db=write_db, keys=keys)
+                      start=start, end=end, write_db=write_db, keys=keys, freq=pdfDB_indi['Freq'].unique()[0])
 
 
-def _update_db(db_name=db_indicators, start=1950, write_db=True, keys=bis_indis,
-               end=dt.datetime.now().year, pdfCSV_Indi=None, pdfCntry=None):
+def _update_db(db_name=db_indicators, start=1950, write_db=True, keys=bis_indis, freq='Q',
+               end=dt.datetime.now().year, pdfCSV_Indi=None, pdfCntry=None, strSuff='QUOTERLY'):
     def print_mess(strMes, end='\n'):
-        print('UPDATE BIS: ', strMes, end=end)
+        print('UPDATE BIS {}: '.format(strSuff), strMes, end=end)
 
     bis_vals = list()
     #0 - vals, 1 - cntry, 2 - indi
 
     for indi in bis_indis:
         print_mess('read {indi}...'.format(indi=indi), end='')
-        rd_bis=pds.read_bis(indiTYPE=indi, get_countries=True)
+        rd_bis=pds.read_bis(indiTYPE=indi, get_countries=True, frequency=freq)
         bis_vals.append(rd_bis)
-        print('done reading {indi_list}, {val_cnt} vals'.format(indi_list=rd_bis[2].index.tolist(), val_cnt=rd_bis[0].shape[0]))
+        try:
+            print('done reading {indi_list}, {val_cnt} vals'.format(indi_list=rd_bis[2].index.tolist(), val_cnt=rd_bis[0].shape[0]))
+        except AttributeError:
+            print()
 
     print_mess('merging and filtering data...', end='' )
     pdfVals = pd.concat([item[0] for item in bis_vals], ignore_index=True)
@@ -91,6 +103,7 @@ def _update_db(db_name=db_indicators, start=1950, write_db=True, keys=bis_indis,
     pdfIndi=pdfIndi.drop_duplicates().loc[pdfCSV_Indi.index]
     pdfIndi['LastUpdateDate'] = dt.datetime.now().strftime('%Y-%m-%d')
     pdfIndi['LastUpdateDate'] = pdfIndi['LastUpdateDate'].astype(str)
+    pdfIndi['Freq']=freq
     pdfCntr=pdfCntr.drop_duplicates().loc[country_list]
     pdfVals=pdfVals.loc[pdfVals['country'].isin(pdfCntr.index) & pdfVals['indi'].isin(pdfIndi.index)]
     print('done')
@@ -113,24 +126,24 @@ def _update_db(db_name=db_indicators, start=1950, write_db=True, keys=bis_indis,
             pdfIndi.loc[c, 'Start'] = pdf['time'].min()
             pdf.to_sql(c, con=coni, if_exists='upsert')
             print('done')
-    print('='*40)
-    print_mess('updating {} table'.format(cmm.strINDI_db_name), end=' ... ')
-    pdfIndi.to_sql(cmm.strINDI_db_name, con=coni, if_exists='replace')
-    print('done')
-    print('=' * 40)
-    print_mess('updating {} table'.format(cmm.strCOUNTRY_db_name), end=' ... ')
-    pdfCntr.to_sql(cmm.strCOUNTRY_db_name, con=coni, if_exists='replace')
-    print('done')
-    print('=' * 40)
-    print_mess('Creating viewa...', end=' ... ')
-    cmm.create_views(db_name)
-    print('=' * 40)
+        print('='*40)
+        print_mess('updating {} table'.format(cmm.strINDI_db_name), end=' ... ')
+        pdfIndi.to_sql(cmm.strINDI_db_name, con=coni, if_exists='replace')
+        print('done')
+        print('=' * 40)
+        print_mess('updating {} table'.format(cmm.strCOUNTRY_db_name), end=' ... ')
+        pdfCntr.to_sql(cmm.strCOUNTRY_db_name, con=coni, if_exists='replace')
+        print('done')
+        print('=' * 40)
+        print_mess('Creating viewa...', end=' ... ')
+        cmm.create_views(db_name, freq=freq)
+        print('=' * 40)
     print_mess('All done.')
     return pdfVals, pdfIndi, pdfCntr
 
 if __name__ == "__main__":
     #print(get_countryes())
     create_db()
-    #update_db(write_db=True)
-    cmm.create_views(db_name=db_indicators)
+    # update_db(db_name=cmm.db_name2annu(db_indicators, suff='_M'), write_db=True)
+    #cmm.create_views(db_name=db_indicators)
     print('all done')

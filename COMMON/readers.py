@@ -68,8 +68,7 @@ def read_countries(file_name=os.path.join('Source', 'work_countries.txt')):
 
 def read_indicators_from_csv(file):
     pdf = pd.read_csv(file, encoding='cp1251', sep=';')
-    pdf = pdf.set_index('Code')
-    return pdf.loc[~pdf.index.duplicated(keep='first') & pdf.index.notnull()]
+    return pdf.loc[~pdf.duplicated(subset=['Code', 'Freq'], keep='first') & pdf.index.notnull()].set_index('Code')
 
 class READ_DB:
 
@@ -205,7 +204,7 @@ def write_status(db_name, strCode, strCount, mult=0):
             date=dt.datetime.now().strftime('%Y-%m-%d'), cnt=strCount, id=strCode, mult=mult, INDI_NAME=strINDI_db_name)
         cn.execute(strSQL)
 
-def create_views(db_name=''):
+def create_views(db_name='', freq='Q'):
     def create_q(strQuery, name):
         strCreate='CREATE VIEW {name} as SELECT * FROM ({select})'.format(name=name, select=strQuery)
         #print(strCreate)
@@ -218,7 +217,10 @@ def create_views(db_name=''):
 
     def create_full_view():
         nameQ = 'INDICATORS_FULL'
-        strUnion = "SELECT id, country, value, time, time_dop, '{0}' as 'INDI' from {0}"
+        if freq=='Q':
+            strUnion = "SELECT id, country, value, time, time_dop, '{0}' as 'INDI' from {0}"
+        else:
+            strUnion = "SELECT id, country, value, time, '{0}' as 'INDI' from {0}"
 
         tbls = pd.read_sql(strQueryINDI_tables, con)
 
@@ -348,6 +350,11 @@ def main():
     print('='*50)
     print('all done')
     #reader=pdr.oecd.OECDReader()
+
+def db_name2annu(strName, suff='_A'):
+    tmpName = strName.split('.')
+    tmpName[-2] = tmpName[-2] + suff
+    return '.'.join(tmpName)
 
 
 if __name__ == "__main__":

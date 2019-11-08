@@ -17,6 +17,7 @@ class _bis_elem(ABC):
     pdf_countries = None
     pdf_indi=None
     pdf_source=None
+    freq=''
 
     result_cols_indi = ['Code', 'Name', 'Freq', 'Start', 'Dataset', 'LastUpdateDate', 'LastUpdateCount', 'MULT']
     result_cols_values=['indi', 'country', 'time', 'value']
@@ -27,10 +28,37 @@ class _bis_elem(ABC):
 
     @classmethod
     def quartal_mean(self, pdf):
-        pdf_indi = pdf.reset_index().groupby(by=['country', pd.Grouper(key='time', freq='Q')])['value'].mean()
-        pdf_indi = pdf_indi.reset_index()
-        pdf_indi['time'] = pdf_indi['time'].apply(lambda x: '{0}-Q{1}'.format(x.year, x.quarter))
+        pdf_indi=pdf
+        if self.freq=='Q':
+            pdf_indi = pdf_indi.reset_index().groupby(by=['country', pd.Grouper(key='time', freq='Q')])['value'].mean()
+            pdf_indi = pdf_indi.reset_index()
+            pdf_indi['time'] = pdf_indi['time'].apply(lambda x: '{0}-Q{1}'.format(x.year, x.quarter))
+        elif self.freq=='M':
+            #1946-01-01
+            pdf_indi = pdf_indi.reset_index().groupby(by=['country', pd.Grouper(key='time', freq='M')])['value'].mean()
+            pdf_indi = pdf_indi.reset_index()
+            pdf_indi['time'] = pdf_indi['time'].apply(lambda x: '{0}-{1}'.format(x.year, x.month))
+
+            #pdf_indi['time'] = pdf_indi['time'].dt.strftime('%Y-%m')
         return pdf_indi
+
+    @classmethod
+    def frequency(self, strF):
+        self.freq=strF
+
+    @classmethod
+    def re_columns(self):
+        if self.freq=='Q':
+            return re.compile(r'\d{4}-Q\d')
+        if self.freq=='M':
+            return re.compile(r'\d{4}-\d{2}')
+        if self.freq in ['A', 'Y']:
+            return re.compile(r'\b\d{4}\b')
+
+    @classmethod
+    def only_quartal_error(self):
+        if self.freq != 'Q':
+            raise ValueError('only quartal data in this file')
 
     @property
     def values(self):
@@ -64,7 +92,7 @@ class _bis_elem(ABC):
     def read(self, indiList=[], countryList=[]):
         pass
 
-class bis_prices(_bis_elem):
+class bis_prices(_bis_elem): # only quartal data in this file
     strUrl=r'https://www.bis.org/statistics/full_bis_selected_pp_csv.zip'
 
     def make_code(self, x):
@@ -96,6 +124,8 @@ class bis_prices(_bis_elem):
         return pdf[self.result_cols_indi].set_index('Code')
 
     def read(self, indiList=[], countryList=[]):
+        self.only_quartal_error()
+
         pdf = pd.read_csv(self.URL, compression='zip')
         self.pdf_source=pdf
         self.pdf_countries = self.get_coutries(pdf)
@@ -113,7 +143,7 @@ class bis_prices(_bis_elem):
         pdfR['indi'] = pdfR[['INDI', 'RN']].apply(self.make_code, axis=1)
         self.pdf_value=pdfR[self.result_cols_values]
 
-class bis_credit(_bis_elem):
+class bis_credit(_bis_elem): # only quartal data in this file
     strUrl = r'https://www.bis.org/statistics/full_bis_total_credit_csv.zip'
 
     def make_code(self, x):
@@ -145,6 +175,8 @@ class bis_credit(_bis_elem):
         return pdf[self.result_cols_indi].set_index('Code')
 
     def read(self, indiList=[], countryList=[]):
+        self.only_quartal_error()
+
         work_cols = ['TC_BORROWERS', 'TC_LENDERS', 'VALUATION', 'TC_ADJUST', 'UNIT_TYPE', 'BORROWERS_CTY']
         dop_cols = ['FREQ', 'Frequency', 'BORROWERS_CTY', "Borrowers' country", 'TC_BORROWERS', 'Borrowing sector',
                     'TC_LENDERS',
@@ -167,7 +199,7 @@ class bis_credit(_bis_elem):
             lambda x: x['value'] * (10 ** (self.pdf_indi.loc[x['indi'], 'MULT'])), axis=1)
         self.pdf_value = pdfR[self.result_cols_values]
 
-class bis_broad_real(_bis_elem):
+class bis_broad_real(_bis_elem): # with quarterly mean
     strUrl = r'https://www.bis.org/statistics/eer/broad.xlsx'
 
     def make_code(self, x):
@@ -205,11 +237,10 @@ class bis_broad_real(_bis_elem):
         pdf_indi.rename(columns={pd.NaT: 'country', 0: 'value'}, inplace=True)
         pdf_indi['value'] = pd.to_numeric(pdf_indi['value'])
         pdf_indi = self.quartal_mean(pdf_indi)
-
         pdf_indi['indi'] = self.make_code('')
         self.pdf_value=pdf_indi[self.result_cols_values]
 
-class bis_cbr_pol(_bis_elem):
+class bis_cbr_pol(_bis_elem): # with quarterly mean !!!!!
     strUrl = r'https://www.bis.org/statistics/full_webstats_cbpol_d_dataflow_csv_row.zip'
 
     def make_code(self, x):
@@ -242,11 +273,12 @@ class bis_cbr_pol(_bis_elem):
         pdf_ret['time'] = pd.to_datetime(pdf_ret['time'])  # ???
         pdf_ret = pdf_ret.set_index('time').astype(float)  # ???
         pdf_ret = pdf_ret.stack().reset_index().rename(columns={1: 'country', 0: 'value'})
+
         pdf_ret = self.quartal_mean(pdf_ret)
         pdf_ret['indi'] = self.make_code('')
         self.pdf_value=pdf_ret[self.result_cols_values]
 
-class bis_credit_non_fin(_bis_elem):
+class bis_credit_non_fin(_bis_elem): # only quortals in this file
     strUrl = r'https://www.bis.org/statistics/totcredit/totcredit.xlsx'
     strTempl1='Credit to Private non-financial sector from Banks, total at Market value - Domestic currency - Adjusted for breaks'
     strTempl2='Credit to Private non-financial sector from Banks, total at Market value - Percentage of GDP - Adjusted for breaks'
@@ -273,6 +305,7 @@ class bis_credit_non_fin(_bis_elem):
         return pdfC.set_index('id').drop_duplicates()
 
     def read(self, indiList=[], countryList=[]):
+        self.only_quartal_error()
         pdf=pd.read_excel(self.URL, sheet_name='Quarterly Series')
         self.pdf_source=pdf
         lstWorkCols = pdf.columns.tolist()[1:]
@@ -318,20 +351,22 @@ class bis_usd_exchange(_bis_elem):
         return pdfI.drop_duplicates()[self.result_cols_indi].set_index('Code')
 
     def read(self, indiList=[], countryList=[]):
+
         pdf = pd.read_csv(self.URL, compression='zip')
         self.pdf_source = pdf
-        pdfW=pdf.loc[(pdf['COLLECTION']=='A') & (pdf['FREQ']=='Q')]
+
+        pdfW=pdf.loc[(pdf['COLLECTION']=='A') & (pdf['FREQ']==self.freq)]
         self.pdf_countries = self.get_coutries(pdfW)
         self.pdf_indi = self.get_indi(pdfW[['Collection', 'Time Period']])
-        w_cols=[c for c in pdfW.columns.tolist() if re.search(r'\d{4}-Q\d', c) or (c in {'REF_AREA', 'Time Period'})]
+        #w_cols=[c for c in pdfW.columns.tolist() if re.search(r'\d{4}-Q\d', c) or (c in {'REF_AREA', 'Time Period'})]
+        w_cols = [c for c in pdfW.columns.tolist() if self.re_columns().search(c) or (c in {'REF_AREA', 'Time Period'})]
         pdfW=pdfW[w_cols].rename(columns={'REF_AREA':'country', 'Time Period':'indi'})
         pdfW['indi']=pdfW['indi'].map(self.make_code)
         pdfW=pdfW.set_index(['country', 'indi']).stack().reset_index().rename(columns={'level_2':'time', 0:'value'})
-
         self.pdf_value=pdfW[self.result_cols_values]
 
 
-class bis_debt_serv_nf(_bis_elem):
+class bis_debt_serv_nf(_bis_elem): # only quartals in this file
     strUrl = r'https://www.bis.org/statistics/full_bis_dsr_csv.zip'
 
     def make_code(self, x):
@@ -354,24 +389,22 @@ class bis_debt_serv_nf(_bis_elem):
         return pdfI.drop_duplicates()[self.result_cols_indi].set_index('Code')
 
     def read(self, indiList=[], countryList=[]):
+        self.only_quartal_error()
         pdf = pd.read_csv(self.URL, compression='zip')
         self.pdf_source = pdf
-        pdfW=pdf.loc[pdf['FREQ']=='Q']
-        self.pdf_countries = self.get_coutries(pdfW)
 
-        w_cols=[c for c in pdfW.columns.tolist() if re.search(r'\d{4}-Q\d', c) or (c in {'BORROWERS_CTY', 'DSR_BORROWERS'})]
+        pdfW=pdf.loc[pdf['FREQ']==self.freq]
+        self.pdf_countries = self.get_coutries(pdfW)
+        w_cols=[c for c in pdfW.columns.tolist() if self.re_columns().search(c) or (c in {'BORROWERS_CTY', 'DSR_BORROWERS'})]
         pdfW=pdfW[w_cols].rename(columns={'BORROWERS_CTY':'country', 'DSR_BORROWERS':'indi'})
         pdfW['indi']=pdfW['indi'].map(self.make_code)
-
         self.pdf_indi = self.get_indi(pdf[['DSR_BORROWERS', 'Borrowers']].drop_duplicates())
-
         pdfW=pdfW.set_index(['country', 'indi']).stack().reset_index().rename(columns={'level_2':'time', 0:'value'})
-
         self.pdf_value=pdfW[self.result_cols_values]
 
 
 
-def read_bis(indiTYPE='PPRICES', debug_info=False, get_countries=False):
+def read_bis(indiTYPE='PPRICES', debug_info=False, get_countries=False, frequency='Q'):
     bis_indis={'PPRICES':bis_prices(), 'CREDIT':bis_credit(), 'BROAD_REAL':bis_broad_real(), 'CBRPOL':bis_cbr_pol(),
                'CREDIT_NON_FIN':bis_credit_non_fin(), 'USD_ESCH':bis_usd_exchange(), 'DEBT_SERV_NF':bis_debt_serv_nf()}
 
@@ -379,7 +412,13 @@ def read_bis(indiTYPE='PPRICES', debug_info=False, get_countries=False):
     ssl._create_default_https_context = ssl._create_unverified_context
 
     bi_i=bis_indis[indiTYPE]
-    bi_i.read()
+    bi_i.frequency(frequency)
+    try:
+        bi_i.read()
+    except ValueError as e:
+        print('BIS READ ERROR: {0} - {1} {2}'.format(indiTYPE, e, bi_i.URL))
+    # print('')
+    # print(bi_i.values.head(10))
 
     ssl._create_default_https_context = ssl_cntxt
 
@@ -394,7 +433,7 @@ def read_bis(indiTYPE='PPRICES', debug_info=False, get_countries=False):
         else:
             return bi_i.values
 
-def read_oecd(strDataSetID='MEI_CLI', frequency='M', countryCode='RUS', indiID='LOLITOAA',
+def read_oecd(strDataSetID='MEI_CLI', frequency='Q', countryCode='RUS', indiID='LOLITOAA',
              startDate=1957, endDate=dt.datetime.now().year, debug_info=False, get_countries=False):
 
     def get_county_series(lstDimSer):
@@ -415,7 +454,7 @@ def read_oecd(strDataSetID='MEI_CLI', frequency='M', countryCode='RUS', indiID='
     strOECDURL = r'https://stats.oecd.org/SDMX-JSON/data/{dataset}/{indi}.{country}.{frequency}/all?startTime={start}-Q1&endTime={end}-Q4'
 
     strQ=strOECDURL.format(dataset=strDataSetID,
-                           frequency=frequency,
+                           frequency='M',
                            country=make_param(countryCode),
                            indi=make_param(indiID),
                            start=startDate,
@@ -429,8 +468,7 @@ def read_oecd(strDataSetID='MEI_CLI', frequency='M', countryCode='RUS', indiID='
     pdStruct= pd.DataFrame(dctStruct)
     mult=10**int(pdStruct.loc[pdStruct['ID']=='POWERCODE', 'VALUE'].values[0])
 
-    dctt=[d for d in
-                 strJ['structure']['dimensions']['observation'][0]['values'] ]
+    dctt=[d for d in strJ['structure']['dimensions']['observation'][0]['values'] ]
 
     pdTime = pd.DataFrame( [d for d in
                  strJ['structure']['dimensions']['observation'][0]['values'] ])
@@ -460,13 +498,18 @@ def read_oecd(strDataSetID='MEI_CLI', frequency='M', countryCode='RUS', indiID='
     #print(pdfRet)
     #pdfRet.to_csv('CSCICP03.csv', sep=';')
 
-    pdfRet=pdfRet.groupby(by=['country', pd.Grouper(key='time', freq='Q')])['value'].mean()
+    pdfRet=pdfRet.groupby(by=['country', pd.Grouper(key='time', freq=frequency)])['value'].mean()
     pdfRet=pdfRet.reset_index()
-
-    pdfRet['time_dop']=pdfRet['time'].dt.quarter
+    if frequency=='Q':
+        pdfRet['time_dop']=pdfRet['time'].dt.quarter
+    elif frequency=='M':
+        pdfRet['time_dop'] = pdfRet['time'].dt.month
 
     pdfRet['time'] = pdfRet['time'].dt.year
-    pdfRet['id'] = pdfRet.apply(lambda x: cmm.get_hash([x['country'].strip(), int(x['time']), int(x['time_dop'])]), axis=1)
+    if frequency not in ['A', 'Y']:
+        pdfRet['id'] = pdfRet.apply(lambda x: cmm.get_hash([x['country'].strip(), int(x['time']), int(x['time_dop'])]), axis=1)
+    else:
+        pdfRet['id'] = pdfRet.apply(lambda x: cmm.get_hash([x['country'].strip(), int(x['time'])]), axis=1)
     pdfRet['mult']=mult
     pdfRet=DataFrameDATA(pdfRet.set_index('id'))
     pdfRet.name=indiID
@@ -537,14 +580,20 @@ def read_imf(strDataSetID='IFS', frequency='Q', countryCode='U2', indiID='NGDP_X
         #pdf['id'] = pdf[[lstFields[2], lstFields[1]]].apply(get_hash, axis=1)
         lstRetFields=lstFields.copy()
 
-        if frequency != 'A':
+        if frequency == 'Q':
             pdf[strFiledDop] = pdf[lstFields[1]].apply(lambda x: x.split(frequency)[1]).astype(int)
             pdf[lstFields[1]] = pdf[lstFields[1]].apply(lambda x: x.split('-')[0]).astype(int)
             pdf['id'] = pdf[[lstFields[2], lstFields[1], strFiledDop]].apply(cmm.get_hash, axis=1)
             lstRetFields+=[strFiledDop]
-        else:
+        elif frequency == 'A':
             pdf[lstFields[1]] = pdf[lstFields[1]].astype(int)
             pdf['id'] = pdf[[lstFields[2], lstFields[1]]].apply(cmm.get_hash, axis=1)
+        elif frequency == 'M':
+
+            pdf[strFiledDop] = pdf[lstFields[1]].apply(lambda x: x.split('-')[1]).astype(int)
+            pdf[lstFields[1]] = pdf[lstFields[1]].apply(lambda x: x.split('-')[0]).astype(int)
+            pdf['id'] = pdf[[lstFields[2], lstFields[1], strFiledDop]].apply(cmm.get_hash, axis=1)
+            lstRetFields += [strFiledDop]
 
         return pdf[lstRetFields].set_index(lstFields[0])
 
@@ -774,8 +823,10 @@ if __name__ == "__main__":
     # print(pdfRet.loc[pdfRet['country']=='BEL'])
     # print(strQ)
     # cmm.print_json(strJ)
-
-    #print(read_imf(strDataSetID='IFS', countryCode=['RU', 'US', 'ZA'], indiID='ENEER_IX'))
+    ddd='AD+AE+AF+AL+AM+AO+AR+AT+AU+AZ+BA+BD+BE+BG+BH+BN+BO+BR+BT+BW+BY+BZ+CA+CD+CG+CH+CI+CL+CN+CO+CR+CS+CU+CY+CZ+DE+DJ+DK+DZ+EC+EE+EG+ER+ES+ET+FI+FR+GA+GB+GE+GH+GL+GN+GR+GT+GY+HK+HN+HR+HU+ID+IE+IL+IN+IQ+IR+IS+IT+JM+JO+JP+KE+KG+KH+KP+KR+KW+KZ+LB+LI+LK+LR+LS+LT+LU+LV+LY+MA+MC+MD+ME+MG+MK+ML+MM+MN+MR+MT+MX+MY+MZ+NA+NE+NG+NI+NL+NO+NP+NZ+OM+PA+PE+PG+PH+PK+PL+PS+PT+PY+QA+RO+RS+RU+SA+SD+SE+SG+SI+SK+SL+SM+SN+SR+SV+SY+TH+TJ+TM+TN+TR+TW+TZ+UA+US+UY+UZ+VE+VN+YE+ZA+ZM+ZW'.split('+')
+    print(ddd)
+    #print(read_imf(strDataSetID='PGI', countryCode=['RU', 'US', 'ZA'], indiID='LP_PE_NUM', frequency='M'))
+    print(read_imf(strDataSetID='PGI', countryCode=ddd[:15], indiID='LP_PE_NUM', frequency='A'))
     #ppp=read_bis(indiTYPE='CBRPOL')
     #ppp = read_bis(indiTYPE='BROAD_REAL')
 

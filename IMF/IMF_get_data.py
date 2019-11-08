@@ -36,7 +36,7 @@ _db_indicators=cmm.work_db_IMF
 
 def update_db(db_name=_db_indicators, start=1950, end=dt.datetime.now().year, write_db=True):
     """update existing sqlite3 local database with data readed from IMF Internet database"""
-    def read_indicators(pdfI=None, freq='Q', coutries=[], ctry_chunksize=50, write_db=True):
+    def read_indicators(pdfI=None, coutries=[], ctry_chunksize=50, write_db=True):
         print('UPDATE IMF: Start reading {0} indicators'.format(pdfI.shape[0]))
         #dct_not_data=dict()
         lst_ret=[]
@@ -50,7 +50,7 @@ def update_db(db_name=_db_indicators, start=1950, end=dt.datetime.now().year, wr
 
                 try:
                     pdf = pds.read_imf(strDataSetID=v['Dataset'], indiID=k, countryCode=cs,
-                                       frequency=freq, startDate=start, endDate=end)
+                                       frequency=v['Freq'], startDate=start, endDate=end)
 
                     lst_pdf.append(pdf)
                     lst_not_country+=pdf.not_country
@@ -100,20 +100,43 @@ def create_db(name=_db_indicators,
               indi_file=os.path.join('Source', 'codes_need.csv'),
               country_file=os.path.join('Source', 'work_countries.txt')):
     """ Create local sqlite3 database file with data readed from IMF Internet database """
+
+    def create_indi_country(pdfI, con, mess, db_name, freq):
+        if pdfI.shape[0]==0:
+            return
+        print('+' * 50, '{} WORKS'.format(mess), '+' * 50)
+
+        pdfI.to_sql(cmm.strINDI_db_name, con, if_exists='replace')
+        print('CREATE IMF.INDICATORS table for {} indicators'.format(pdfI.shape[0]))
+        pdfC = get_countryes(db_name=db_name, country_txt_file=country_file)
+        pdfC.to_sql(cmm.strCOUNTRY_db_name, con=con, if_exists='replace')
+        print('CREATE IMF.COUNTRIES for {0} countries.'.format(pdfC.shape[0]))
+
+        update_db(db_name=db_name, start=1970, end=2000)
+        update_db(db_name=db_name, start=1999)
+
+        cmm.create_views(db_name, freq=freq)
+
     pdf = cmm.read_indicators_from_csv(indi_file)
+    print(indi_file)
+
+    pdfQ = pdf[pdf['Freq']=='Q']
+    pdfA = pdf[pdf['Freq'] == 'Y']
+    pdfM = pdf[pdf['Freq'] == 'M']
+
+    #pdfC = cmm.read_countries(file_name=country_file)
+
+    nameA=cmm.db_name2annu(name)
+    nameM = cmm.db_name2annu(name, suff='_M')
+
     coni = sa.create_engine('sqlite+pysqlite:///{name}'.format(name=name))
+    coniA = sa.create_engine('sqlite+pysqlite:///{name}'.format(name=nameA))
+    coniM = sa.create_engine('sqlite+pysqlite:///{name}'.format(name=nameM))
 
-    pdf.to_sql(cmm.strINDI_db_name, coni, if_exists='replace')
-    print('CREATE IMF.INDICATORS table for {} indicators'.format( pdf.shape[0]))
+    create_indi_country(pdfQ, coni, 'QUARTERLY', name, freq='Q')
+    create_indi_country(pdfA, coniA, 'ANNUAL', nameA, freq='A')
+    create_indi_country(pdfM, coniM, 'MONTHLY', nameM, freq='M')
 
-    pdfC=get_countryes(db_name=name, country_txt_file=country_file)
-    pdfC.to_sql(cmm.strCOUNTRY_db_name, con=coni, if_exists='replace')
-    print('CREATE IMF.COUNTRIES for {0} countries.'.format(pdfC.shape[0]))
-
-    update_db(db_name=name, start=1970, end=2000)
-    update_db(db_name=name, start=1999)
-
-    cmm.create_views(name)
 
 
 def get_countryes(db_name=_db_indicators, country_txt_file=os.path.join('Source', 'work_countries.txt')):
@@ -123,7 +146,18 @@ def get_countryes(db_name=_db_indicators, country_txt_file=os.path.join('Source'
     print('CREATE IMF: reading countries from all neede datasets...', end=' ')
     coni = sa.create_engine('sqlite+pysqlite:///{db_name}'.format(db_name=db_name))
     dbSETS=pd.read_sql('SELECT DISTINCT Dataset from {INDI_NAME}'.format(INDI_NAME=cmm.strINDI_db_name), con=coni)
-    pdfC = pd.concat([pd.DataFrame(imf.get_datastructure_list(d['Dataset'])['Geographical Areas']).set_index('CL_AREA_{}'.format(d['Dataset'])) for k, d in dbSETS.iterrows() ])
+
+    cntrl=list()
+
+    for k, d in dbSETS.iterrows():
+        try:
+            cntrl.append(pd.DataFrame(imf.get_datastructure_list(d['Dataset'])['Geographical Areas']).set_index('CL_AREA_{}'.format(d['Dataset'])))
+        except KeyError:
+            pass
+
+    # pdfC = pd.concat([pd.DataFrame(imf.get_datastructure_list(d['Dataset'])['Geographical Areas']).set_index('CL_AREA_{}'.format(d['Dataset'])) for k, d in dbSETS.iterrows() ])
+    pdfC = pd.concat(cntrl)
+
     pdfC=pdfC[pdfC.index.isin(country_list)]
     pdfC = pdfC[~pdfC.index.duplicated()]
     pdfC.index.name='id'
@@ -136,18 +170,24 @@ def get_countryes(db_name=_db_indicators, country_txt_file=os.path.join('Source'
 
 
 import sqlite3
+
+
+
 if __name__ == "__main__":
-    #create_db(name=_db_indicators)
-    con=sqlite3.connect(_db_indicators)
+    create_db(name=_db_indicators)
+
+
+    #con=sqlite3.connect(_db_indicators)
     #pdfT=pd.read_sql('select * from INDICATORS_FULL', index_col='id', con=con)
 
     #update_db(db_name=_db_indicators, start=2010)
-    pdfTU = pd.read_sql('select * from INDICATORS_FULL', index_col='id', con=con)
+    #update_db(db_name='IMF1_M.sqlite3', start=1999, frequency='M')
+    #pdfTU = pd.read_sql('select * from INDICATORS_FULL', index_col='id', con=con)
 
     #print('before {0}, after {1}'.format(pdfT.shape[0], pdfTU.shape[0]))
 
-    print(pdfTU.loc[pdfTU.index.duplicated(), :])
-    #print(update_db(db_name=db_indicators))
+    #print(pdfTU.loc[pdfTU.index.duplicated(), :])
+    #print(update_db(db_name=_db_indicators))
     #cmm.create_views(db_name=db_indicators)
     #print(get_countryes())
     #create_views(db_name=db_indicators, freq='Q')

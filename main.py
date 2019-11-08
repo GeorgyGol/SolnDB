@@ -17,15 +17,16 @@ if __name__ == "__main__":
 
     str_panel_file=os.path.join('DATA', 'full_data.csv')
 
-    # imf.create_db(name=db_imf_path,
-    #                  indi_file=os.path.join('INIT', 'IMF', 'codes_need.csv'),
-    #                  country_file=os.path.join('INIT', 'IMF', 'work_countries.txt'))
+    imf.create_db(name=db_imf_path,
+                     indi_file=os.path.join('INIT', 'IMF', 'codes_need.csv'),
+                     country_file=os.path.join('INIT', 'IMF', 'work_countries.txt'))
 
     # imf.update_db(db_name=db_imf_path, start=2017)
+    # imf.update_db(db_name=cmm.db_name2annu(db_imf_path), start=2017)
 
-    wb.create_db(name=db_wb_path,
-                  indi_file=os.path.join('INIT', 'WB', 'codes_need.csv'),
-                  country_file=os.path.join('INIT', 'WB', 'work_countries.txt'))
+    # wb.create_db(name=db_wb_path,
+    #               indi_file=os.path.join('INIT', 'WB', 'codes_need.csv'),
+    #               country_file=os.path.join('INIT', 'WB', 'work_countries.txt'))
 
     # wb.update_db(db_name=db_wb_path, start=2017)
 
