@@ -757,7 +757,10 @@ def _read_indy():
 
 def read_worldbank(symbol='DT.DOD.DECT.CD.GG.AR.US', countries='all', start=1998,
                    end=2019, freq='Q', debug_info=False, get_countries=False):
+    assert freq in ['Q', 'M'], 'frequency input error must be Q or M'
     pdwb = pddr.WorldBankReader(symbols=symbol, countries=countries, start=start, end=end, freq=freq)
+
+    #print(pdwb.get_indicators())
 
     ret=DataFrameDATA(pdwb.read().reset_index()).rename(columns={symbol:'value', 'year':'time'})
     ret['indi']=symbol
@@ -765,11 +768,15 @@ def read_worldbank(symbol='DT.DOD.DECT.CD.GG.AR.US', countries='all', start=1998
     db_cntr=pdwb.get_countries()[['iso2c', 'name']].rename(columns={'iso2c':'id', 'name':'Country'}).set_index('id')
 
     #db_cntr.to_csv('WB_countries.csv', sep=';')
+    pdf=db_cntr.reset_index().set_index('Country').join(ret.set_index('country'))
 
     ret['country'] = ret['country'].map(db_cntr.reset_index().set_index('Country')['id'])
-    ret['time_dop'] = ret['time'].str.extract('Q(\d+)', expand=False)
+    ret=ret.dropna()
+    if ret.shape[0]==0:
+        raise ValueError('no data')
+    ret['time_dop'] = ret['time'].str.extract(freq+'(\d+)', expand=False)
     ret['time_dop']=ret['time_dop'].astype(int)
-    ret['time'] = ret['time'].str.extract('^(\d+)Q', expand=False)
+    ret['time'] = ret['time'].str.extract('^(\d+)'+freq, expand=False)
     ret['time'] = ret['time'].astype(int)
 
     ret['id']=ret.apply(lambda x: cmm.get_hash([x['country'].strip(), int(x['time']), int(x['time_dop'])]), axis=1)
@@ -799,8 +806,13 @@ def read_worldbank(symbol='DT.DOD.DECT.CD.GG.AR.US', countries='all', start=1998
         else:
             return ret
 
+def read_worldbank_struct():
+    pdwb = pddr.WorldBankReader()
+    return pdwb.get_indicators(), pdwb.get_countries()
 
 if __name__ == "__main__":
+
+    print(read_worldbank(symbol='TOT', freq='M'))
 
     #pd, strQ, strJ=from_imf(frequency='Q', countryCode='RU', indiID='NSDGDP_XDC', debug_info=True)
     #for i, v in pd.iterrows():
@@ -823,10 +835,10 @@ if __name__ == "__main__":
     # print(pdfRet.loc[pdfRet['country']=='BEL'])
     # print(strQ)
     # cmm.print_json(strJ)
-    ddd='AD+AE+AF+AL+AM+AO+AR+AT+AU+AZ+BA+BD+BE+BG+BH+BN+BO+BR+BT+BW+BY+BZ+CA+CD+CG+CH+CI+CL+CN+CO+CR+CS+CU+CY+CZ+DE+DJ+DK+DZ+EC+EE+EG+ER+ES+ET+FI+FR+GA+GB+GE+GH+GL+GN+GR+GT+GY+HK+HN+HR+HU+ID+IE+IL+IN+IQ+IR+IS+IT+JM+JO+JP+KE+KG+KH+KP+KR+KW+KZ+LB+LI+LK+LR+LS+LT+LU+LV+LY+MA+MC+MD+ME+MG+MK+ML+MM+MN+MR+MT+MX+MY+MZ+NA+NE+NG+NI+NL+NO+NP+NZ+OM+PA+PE+PG+PH+PK+PL+PS+PT+PY+QA+RO+RS+RU+SA+SD+SE+SG+SI+SK+SL+SM+SN+SR+SV+SY+TH+TJ+TM+TN+TR+TW+TZ+UA+US+UY+UZ+VE+VN+YE+ZA+ZM+ZW'.split('+')
-    print(ddd)
-    #print(read_imf(strDataSetID='PGI', countryCode=['RU', 'US', 'ZA'], indiID='LP_PE_NUM', frequency='M'))
-    print(read_imf(strDataSetID='PGI', countryCode=ddd[:15], indiID='LP_PE_NUM', frequency='A'))
+    # ddd='AD+AE+AF+AL+AM+AO+AR+AT+AU+AZ+BA+BD+BE+BG+BH+BN+BO+BR+BT+BW+BY+BZ+CA+CD+CG+CH+CI'#+CL+CN+CO+CR+CS+CU+CY+CZ+DE+DJ+DK+DZ+EC+EE+EG+ER+ES+ET+FI+FR+GA+GB+GE+GH+GL+GN+GR+GT+GY+HK+HN+HR+HU+ID+IE+IL+IN+IQ+IR+IS+IT+JM+JO+JP+KE+KG+KH+KP+KR+KW+KZ+LB+LI+LK+LR+LS+LT+LU+LV+LY+MA+MC+MD+ME+MG+MK+ML+MM+MN+MR+MT+MX+MY+MZ+NA+NE+NG+NI+NL+NO+NP+NZ+OM+PA+PE+PG+PH+PK+PL+PS+PT+PY+QA+RO+RS+RU+SA+SD+SE+SG+SI+SK+SL+SM+SN+SR+SV+SY+TH+TJ+TM+TN+TR+TW+TZ+UA+US+UY+UZ+VE+VN+YE+ZA+ZM+ZW'.split('+')
+    # print(ddd)
+    # print(read_imf(strDataSetID='IFS', countryCode=ddd, indiID='AIP_IX', frequency='Q'))
+    # print(read_imf(strDataSetID='PGI', countryCode=ddd[:15], indiID='LP_PE_NUM', frequency='A'))
     #ppp=read_bis(indiTYPE='CBRPOL')
     #ppp = read_bis(indiTYPE='BROAD_REAL')
 

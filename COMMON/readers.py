@@ -68,6 +68,7 @@ def read_countries(file_name=os.path.join('Source', 'work_countries.txt')):
 
 def read_indicators_from_csv(file):
     pdf = pd.read_csv(file, encoding='cp1251', sep=';')
+    pdf['Code']=pdf['Code'].str.strip()
     return pdf.loc[~pdf.duplicated(subset=['Code', 'Freq'], keep='first') & pdf.index.notnull()].set_index('Code')
 
 class READ_DB:
