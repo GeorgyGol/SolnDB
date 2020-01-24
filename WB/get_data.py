@@ -32,6 +32,7 @@ import sqlalchemy as sa
 import sys
 import os
 import numpy as np
+from pandas_datareader import wb as pddr
 
 if not sys.warnoptions:
     import warnings
@@ -85,22 +86,48 @@ def _update_db(db_name=cmm.work_db_WB, start=1950, write_db=True, keys='', frequ
             print('UPDATE WORLD BANK MONTHLY: ', strMes, end=end)
 
     dct_db = dict()
+
+    def get_indi(symbols, ret):
+        db_indi = pddr.get_indicators()
+
+        # db_indi.to_csv('wb_indi.csv', sep=';')
+
+        db_indi = db_indi.loc[db_indi['id'].isin(symbols)].rename(
+            columns={'id': 'Code', 'name': 'Name', 'source': 'Dataset'})
+        db_indi['Freq'] = frequency
+        db_indi['Start'] = ret['time'].min()
+        db_indi['LastUpdateDate'] = dt.datetime.now()
+        db_indi['LastUpdateCount'] = ret.shape[0]
+        db_indi['MULT'] = 0
+        db_indi['Code'] = db_indi['Code'].str.replace('\.', '_')
+        db_indi.set_index('Code')
+        return db_indi
+
+    def get_countries(ret):
+        db_c = pddr.get_countries()[['iso2c', 'name']].rename(columns={'iso2c':'id', 'name':'Country'}).set_index('id')
+        return db_c
+
     print_mess('reading indicators...')
+    pdfl=[]
     for k, v in pdfCSV_Indi.iterrows():
-        print('\tindicator {0} for {1} countries...'.format(k, len(pdfCntry)), end='')
-        dct_db.setdefault(k, pds.read_worldbank(symbol=k, countries=pdfCntry, get_countries=True,
-                                                start=start, end=end, freq=frequency))
-        print('ok for {} records'.format(dct_db[k][0].shape[0]))
+        for c in cmm.iterate_group(pdfCntry, 10):
+            print('\tindicator {0} for {1} countries...'.format(k, c), end='')
+            try:
+                pdfl.append(pds.read_worldbank(symbol=k, countries=c, get_countries=False,
+                                           start=start, end=end, freq=frequency))
+                print('done')
+            except ValueError:
+                print('no data')
+
+        dct_db.setdefault(k, pd.concat(pdfl))
+        print('ok for {} records'.format(dct_db[k].shape[0]))
     print_mess('+'*50)
     print_mess('merging data...', end='')
-    pdf_indis = pd.concat([v[2] for _, v in dct_db.items()]).reset_index(drop=True)
-    pdf_indis['Code'] = pdf_indis['Code'].str.replace('\.', '_')
-    pdf_indis['Freq']=frequency
-    pdf_indis = pdf_indis.set_index('Code')
+    pdf_ret = pd.concat([v for _, v in dct_db.items()]).drop_duplicates()
 
+    pdf_indis = get_indi(pdfCSV_Indi.index.tolist(), pdf_ret)
 
-    pdf_cntr = pd.concat([v[1] for _, v in dct_db.items()]).drop_duplicates()
-    pdf_ret = pd.concat([v[0] for _, v in dct_db.items()]).drop_duplicates()
+    pdf_cntr = get_countries(pdf_ret)
 
     print('done')
     if write_db:
@@ -109,8 +136,8 @@ def _update_db(db_name=cmm.work_db_WB, start=1950, write_db=True, keys='', frequ
         coni = sa.create_engine('sqlite+pysqlite:///{db_name}'.format(db_name=db_name))
         for k, v in dct_db.items():
             print('\t for ', k, end='...')
-            v[0][['country', 'time', 'time_dop', 'value']].to_sql(k.replace('.', '_'), con=coni, if_exists='upsert')
-            print('ok for {} records'.format(v[0].shape[0]))
+            v[['country', 'time', 'time_dop', 'value']].to_sql(k.replace('.', '_'), con=coni, if_exists='upsert')
+            print('ok for {} records'.format(v.shape[0]))
 
         print_mess('+' * 50)
         print_mess('writing countries and indicators to db...', end='')
@@ -131,10 +158,28 @@ def create_db_struct(db_name='WB_STRUCT.sqlite3'):
     print('done')
     return pdf_i, pdf_c
 
+
+
 if __name__ == "__main__":
-    create_db_struct()
-    #print(get_countryes())
-    #create_db()
+    # #i, c = create_db_struct()
+    # cr=cmm.read_countries(file_name=os.path.join('Source', 'work_countries.txt'))
+    #
+    # for c in cmm.iterate_group(cr, 10):
+    #     print(c)
+    # lst_wb=[pddr.WorldBankReader(symbols='TOT', countries=r, start=1980, end=2019, freq='M').read().dropna() for r in cmm.iterate_group(cr, 10)]
+    # pdd=pd.concat(lst_wb)
+    #
+    # # pdf=pds.read_worldbank(symbol='TOT', countries='all', get_countries=True,
+    # #                    start=1980, end=2019, freq='M')[0]
+    # # print(pdf)
+    # # print(pdf['country'].unique().tolist())
+    # # print(len(pdf['country'].unique().tolist()))
+    # #
+    # # pdd=pddr.WorldBankReader(symbols='TOT', countries=cr, start=1980, end=2019, freq='M').read().dropna()
+    # print(pdd)
+    # print(pdd.reset_index()['country'].unique().tolist())
+
+    create_db()
     #update_db(db_name=cmm.db_name2annu(cmm.work_db_WB, suff='_M'))
     #cmm.create_views(db_name=cmm.work_db_WB)
     print('all done')

@@ -3,7 +3,9 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/SolnDB.iml" filepath="$PROJECT_DIR$/.idea/SolnDB.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../UES/.idea/UES.iml" filepath="$PROJECT_DIR$/../UES/.idea/UES.iml" />
       <module fileurl="file://$PROJECT_DIR$/../VSDB/.idea/VSDB.iml" filepath="$PROJECT_DIR$/../VSDB/.idea/VSDB.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../backupz/.idea/backupz.iml" filepath="$PROJECT_DIR$/../backupz/.idea/backupz.iml" />
       <module fileurl="file://$PROJECT_DIR$/../mapOPUS/.idea/mapOPUS.iml" filepath="$PROJECT_DIR$/../mapOPUS/.idea/mapOPUS.iml" />
     </modules>
   </component>

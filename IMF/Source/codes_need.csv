@@ -5,3 +5,4 @@ Name;Code;Freq;Start;Dataset;LastUpdateDate;LastUpdateCount;MULT
 ;FPE_IX;M;1980;IFS;;;
 ;xm_gdp;M;1980;PCTOT;;;
 ;AIP_SA_IX;M;1980;IFS;;;
+;FPE_EOP_IX;M;1980;IFS;;;
