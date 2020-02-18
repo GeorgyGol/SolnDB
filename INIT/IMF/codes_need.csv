@@ -1,4 +1,4 @@
-Name;Code;Q;Start;Dataset;LastUpdateDate;LastUpdateCount;MULT
+Name;Code;Freq;Start;Dataset;LastUpdateDate;LastUpdateCount;MULT
 Gross Domestic Product, Expenditure Approach, Nominal, Domestic Currency;NGDP_XDC;Q;1980;IFS;;;
 Household Consumption Expenditure, incl. NPISHs, Nominal, Domestic Currency;NCP_XDC;Q;1980;IFS;;;
 Government Consumption Expenditure, Nominal, Domestic Currency;NCGG_XDC;Q;1980;IFS;;;
@@ -240,3 +240,5 @@ Current Account, Total, Net, Percent of GDP, Percent;FIGBY_SM_PA;Q;1980;PGI;;;
 ;FPE_IX;M;1980;IFS;;;
 ;xm_gdp;M;1980;PCTOT;;;
 ;AIP_SA_IX;M;1980;IFS;;;
+;FPOLM_PA;M;1980;IFS;;;
+Industrial Production, Seasonally adjusted, Index;AIP_SA_IX;Q;1980;IFS;;;
